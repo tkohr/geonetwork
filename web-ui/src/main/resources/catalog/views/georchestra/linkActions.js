@@ -19,7 +19,9 @@
     'gnAlertService',
     '$location',
     'gnMap',
-      function(gnHttp, gnAlertService, $location, gnMap) {
+    '$filter',
+    'gnExternalViewer',
+      function(gnHttp, gnAlertService, $location, gnMap, $filter, gnExternalViewer) {
 
         /**
          * Url pattern for metadata page
@@ -35,15 +37,10 @@
          * @property {Object} layers[].md the metadata object
          * @param {boolean} for extraction
          */
-        this.addWMSLayers = function (layers, extract) {
-          var jsonObject = {services: [], layers: []};
+        this.addWMSLayers = function (layers, md) {
           layers.forEach(function(layer) {
-            jsonObject.layers.push(this.getLayerJSONSpec(layer.link, layer.md));
+            this.addWMSLayer(layer, md);
           }.bind(this));
-          sendPostForm(
-            'mapfishapp' + ((extract) ? '/?addons=extractor_0' : '/'),
-            JSON.stringify(jsonObject)
-          );
         }.bind(this);
 
         /**
@@ -53,9 +50,44 @@
          * @param {Object} md the metadata object
          */
         this.addWMSLayer = function (link, md) {
-          var jsonObject = {services: [], layers: []};
-          jsonObject.layers.push(this.getLayerJSONSpec(link, md));
-          sendPostForm('mapfishapp/', JSON.stringify(jsonObject));
+          var config = {
+            uuid: md ? md.uuid : null,
+            type:
+              link.protocol.indexOf('WMTS') > -1 ? 'wmts' :
+                ((link.protocol == 'ESRI:REST') || (link.protocol.startsWith('ESRI REST')) ? 'esrirest' : 'wms'),
+            url: $filter('gnLocalized')(link.url) || link.url
+          };
+
+          var title = link.title;
+          var name = link.name;
+          if (angular.isObject(link.title)) {
+            title = $filter('gnLocalized')(link.title);
+          }
+          if (angular.isObject(link.name)) {
+            name = $filter('gnLocalized')(link.name);
+          }
+
+          if (name && name !== '') {
+            config.name = name;
+            config.group = link.group;
+            // Related service return a property title for the name
+          } else if (title) {
+            config.name = title;
+          }
+
+          // if an external viewer is defined, use it here
+          if (gnExternalViewer.isEnabled()) {
+            gnExternalViewer.viewService({
+              id: md ? md.id : null,
+              uuid: config.uuid
+            }, {
+              type: config.type,
+              url: config.url,
+              name: config.name,
+              title: title
+            });
+            return;
+          }
         }.bind(this);
 
         /**
@@ -65,7 +97,7 @@
          * @param {Object} md the metadata object
          */
         this.getLayerJSONSpec = function(link, md) {
-          var metadataUrl = baseMdUrl + md.getUuid();
+          var metadataUrl = baseMdUrl + md.uuid;
           var layerConfig = gnMap.getLayerConfigFromLink(link);
           var json;
 

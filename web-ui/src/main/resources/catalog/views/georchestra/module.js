@@ -32,6 +32,7 @@
       gnSearchSettings.customSelectActions = [{
         icon: 'fa-globe',
         fn: function() {
+          //TODO: open mapstore for selected layers as well
           georLinkActionsService.extractMetadata('mapfishapp');
         },
         label: 'viewLayers'
@@ -59,11 +60,8 @@
 
       // Overrides add wms to map buttons action in main search scope
       $scope.resultviewFns.addMdLayerToMap = georLinkActionsService.addWMSLayer;
-      $scope.resultviewFns.getLayerJSONSpec = georLinkActionsService.getLayerJSONSpec;
       $scope.resultviewFns.addWMSLayers = georLinkActionsService.addWMSLayers;
-      $scope.resultviewFns.addAllMdLayersToMap = function(layers, md) {
-        georLinkActionsService.extractMetadata('mapfishapp', md.getId());
-      }
+      $scope.resultviewFns.addAllMdLayersToMap = georLinkActionsService.addWMSLayers;
     }
     gnRelatedResources.configure({
       'WMS' : {
